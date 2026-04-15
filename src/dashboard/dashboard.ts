@@ -1,16 +1,15 @@
 import { taskQueue } from '../pipeline/taskQueue.js';
 import { chapterRepository } from '../memory/chapterRepository.js';
+import { qualityReportRepository } from '../quality/qualityReportRepository.js';
 import { dashboardPrinter } from './printer.js';
-import type { PipelineTask, QualityReport } from '../types/index.js';
-
-// 模拟质量报告存储（实际应从数据库读取）
-const qualityReports: QualityReport[] = [];
+import type { PipelineTask } from '../types/index.js';
 
 export class Dashboard {
   // 显示完整看板
   showFullDashboard(): void {
     const tasks = taskQueue.getAllTasks();
     const chapters = chapterRepository.findAll();
+    const reports = qualityReportRepository.findAll();
 
     dashboardPrinter.printHeader('AI 编辑部 - 项目总览');
 
@@ -29,8 +28,8 @@ export class Dashboard {
     }
 
     // 质量报告
-    if (qualityReports.length > 0) {
-      dashboardPrinter.printQualityReports(qualityReports);
+    if (reports.length > 0) {
+      dashboardPrinter.printQualityReports(reports);
     }
 
     // 手动干预提示
@@ -110,14 +109,9 @@ export class Dashboard {
     }
   }
 
-  // 添加质量报告（供测试/集成使用）
-  addQualityReport(report: QualityReport): void {
-    qualityReports.push(report);
-  }
-
   // 获取质量报告
-  getQualityReports(): QualityReport[] {
-    return qualityReports;
+  getQualityReports() {
+    return qualityReportRepository.findAll();
   }
 }
 

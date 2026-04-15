@@ -11,6 +11,9 @@ data/
 .env
 .env.local
 
+# Claude AI
+.claude/
+
 # IDE
 .vscode/
 .idea/

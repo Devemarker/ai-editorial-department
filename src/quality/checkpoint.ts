@@ -1,6 +1,7 @@
 import { globalEventBus } from '../pipeline/eventBus.js';
 import { consistencyChecker } from './consistencyChecker.js';
 import { reportGenerator } from './reportGenerator.js';
+import { qualityReportRepository } from './qualityReportRepository.js';
 import type { PipelineEvent, QualityReport } from '../types/index.js';
 
 const CHECKPOINT_INTERVAL = 5; // 每 5 章检测一次
@@ -43,6 +44,9 @@ export class Checkpoint {
       totalChapters: checkpointCounter,
       issues,
     });
+
+    // 保存到数据库
+    qualityReportRepository.create(report);
 
     this.config.onCheckpointComplete?.(report);
     return report;
