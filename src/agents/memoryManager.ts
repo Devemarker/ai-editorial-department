@@ -1,5 +1,7 @@
 import { BaseAgent, type AgentContext } from './base.js';
 import { memoryService } from '../memory/memoryService.js';
+import { llm } from '../llm/openai.js';
+import type { StoryEvent } from '../types/index.js';
 
 export class MemoryManagerAgent extends BaseAgent {
   constructor() {
@@ -48,19 +50,23 @@ export class MemoryManagerAgent extends BaseAgent {
     return { initializedCharacters, initializedWorldKnowledge };
   }
 
+  /**
+   * 保存章节上下文
+   * 使用 LLM 提取关键事件和人物状态
+   */
   async saveChapterContext(
     chapterId: string,
     content: string,
     characterStates: Record<string, string>
   ): Promise<void> {
-    // 提取事件（简单实现：按句号分割，取前3句作为事件描述）
-    const sentences = content.split(/[。！？]/).filter((s) => s.trim().length > 10);
-    const keyEvents = sentences.slice(0, 3);
+    // 提取事件（增强实现：使用 LLM 分析）
+    const events = await this.extractEventsWithLLM(chapterId, content);
 
-    for (const event of keyEvents) {
+    for (const event of events) {
       memoryService.createEvent({
         chapterId,
-        description: event.trim(),
+        description: event.description,
+        timestampInStory: event.timestampInStory,
       });
     }
 
@@ -72,7 +78,89 @@ export class MemoryManagerAgent extends BaseAgent {
       }
     }
 
-    this.log('保存章节上下文', `章节 ${chapterId}`);
+    this.log('保存章节上下文', `章节 ${chapterId}，提取 ${events.length} 个事件`);
+  }
+
+  /**
+   * 使用 LLM 从章节内容中提取关键事件
+   */
+  private async extractEventsWithLLM(
+    chapterId: string,
+    content: string
+  ): Promise<Array<{ description: string; timestampInStory: number }>> {
+    const prompt = `你是一个事件提取专家。请从以下小说章节中提取关键事件。
+
+章节内容：
+${content.slice(0, 3000)}
+
+请提取 3-5 个关键事件，每个事件应该：
+1. 是情节中的重要转折点或关键情节
+2. 包含人物参与
+3. 有明确的描述（20-100字）
+
+请以 JSON 格式输出事件列表：
+{
+  "events": [
+    {
+      "description": "事件描述",
+      "timestampInStory": 事件在故事中的大致时间位置（1-100的相对值）
+    }
+  ]
+}`;
+
+    try {
+      const response = await llm.complete(prompt, { temperature: 0.3 });
+      const result = this.parseEventsResponse(response.text);
+
+      if (result.events && result.events.length > 0) {
+        return result.events.map((e: { description: string; timestampInStory?: number }) => ({
+          description: e.description,
+          timestampInStory: e.timestampInStory || 50,
+        }));
+      }
+    } catch (err) {
+      console.error('[MemoryManager] 事件提取失败，使用简单提取:', err);
+    }
+
+    // 回退到简单提取
+    return this.extractEventsSimple(content, chapterId);
+  }
+
+  /**
+   * 简单事件提取（作为 LLM 提取失败时的回退方案）
+   */
+  private extractEventsSimple(
+    content: string,
+    chapterId: string
+  ): Array<{ description: string; timestampInStory: number }> {
+    const events: Array<{ description: string; timestampInStory: number }> = [];
+
+    // 按段落分割，提取包含人物和动作的段落作为事件
+    const paragraphs = content.split(/\n+/).filter((p) => p.trim().length > 50);
+    const totalLength = paragraphs.reduce((sum, p) => sum + p.length, 0);
+
+    let accumulatedLength = 0;
+    for (let i = 0; i < Math.min(paragraphs.length, 5); i++) {
+      const para = paragraphs[i];
+      accumulatedLength += para.length;
+
+      events.push({
+        description: para.trim().slice(0, 200),
+        timestampInStory: Math.round((accumulatedLength / totalLength) * 100),
+      });
+    }
+
+    return events;
+  }
+
+  private parseEventsResponse(response: string): { events: Array<{ description: string; timestampInStory?: number }> } {
+    try {
+      const match = response.match(/\{[\s\S]*\}/);
+      if (match) {
+        return JSON.parse(match[0]);
+      }
+    } catch {}
+    return { events: [] };
   }
 
   async retrieveMemories(context: string): Promise<{
