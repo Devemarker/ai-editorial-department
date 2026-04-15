@@ -4,6 +4,7 @@ import { writerAgent } from '../agents/writer.js';
 import { contentEditorAgent } from '../agents/contentEditor.js';
 import { proofreaderAgent } from '../agents/proofreader.js';
 import type { PipelineTask, PipelineEvent, ProjectInput, PipelineConfig } from '../types/index.js';
+import { PIPELINE_ACTIVE_STATUSES } from '../types/index.js';
 
 export class Pipeline {
   private config: PipelineConfig;
@@ -69,6 +70,13 @@ export class Pipeline {
     try {
       if (!this.projectInput) {
         throw new Error('Project input not set');
+      }
+      // 验证必填字段
+      if (!this.projectInput.title || !this.projectInput.outline) {
+        throw new Error('ProjectInput 缺少必填字段：title 和 outline');
+      }
+      if (!this.projectInput.characters || this.projectInput.characters.length === 0) {
+        throw new Error('ProjectInput 缺少角色信息');
       }
 
       const draft = await writerAgent.act({
@@ -164,7 +172,7 @@ export class Pipeline {
     return {
       total: all.length,
       pending: all.filter((t) => t.status === 'pending').length,
-      processing: all.filter((t) => ['writing', 'editing', 'proofreading'].includes(t.status)).length,
+      processing: all.filter((t) => PIPELINE_ACTIVE_STATUSES.includes(t.status)).length,
       completed: all.filter((t) => t.status === 'approved').length,
     };
   }

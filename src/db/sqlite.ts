@@ -64,7 +64,7 @@ export function cleanDb(): void {
     db = null;
   }
 
-  // 等待一下确保文件释放
+  // 删除数据库文件及相关文件
   try {
     if (existsSync(dbPath)) {
       unlinkSync(dbPath);
@@ -74,6 +74,6 @@ export function cleanDb(): void {
     if (existsSync(walPath)) unlinkSync(walPath);
     if (existsSync(shmPath)) unlinkSync(shmPath);
   } catch (err) {
-    // 忽略删除错误（文件可能被占用）
+    console.warn('[DB] 清理数据库文件失败（文件可能被占用）:', err);
   }
 }

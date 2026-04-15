@@ -2,7 +2,8 @@ import { taskQueue } from '../pipeline/taskQueue.js';
 import { chapterRepository } from '../memory/chapterRepository.js';
 import { qualityReportRepository } from '../quality/qualityReportRepository.js';
 import { dashboardPrinter } from './printer.js';
-import type { PipelineTask } from '../types/index.js';
+import type { PipelineTask, QualityReport } from '../types/index.js';
+import { PIPELINE_ACTIVE_STATUSES } from '../types/index.js';
 
 export class Dashboard {
   // 显示完整看板
@@ -58,7 +59,7 @@ export class Dashboard {
     return {
       totalChapters: taskQueue.getAllTasks().length,
       completed: tasks.filter((t) => t.status === 'approved').length,
-      inProgress: tasks.filter((t) => ['writing', 'editing', 'proofreading'].includes(t.status)).length,
+      inProgress: tasks.filter((t) => PIPELINE_ACTIVE_STATUSES.includes(t.status)).length,
       pending: tasks.filter((t) => t.status === 'pending').length,
     };
   }
@@ -110,7 +111,7 @@ export class Dashboard {
   }
 
   // 获取质量报告
-  getQualityReports() {
+  getQualityReports(): QualityReport[] {
     return qualityReportRepository.findAll();
   }
 }

@@ -16,6 +16,9 @@ export const config = {
   openaiModel: process.env.OPENAI_MODEL || 'gpt-4o',
   dbPath: process.env.DB_PATH || './data/ai-editorial.db',
   chromaPath: process.env.CHROMA_PATH || './data/chroma',
+  // LLM 默认配置
+  llmTemperature: parseFloat(process.env.LLM_TEMPERATURE || '0.7'),
+  llmMaxTokens: parseInt(process.env.LLM_MAX_TOKENS || '2048', 10),
 };
 
 // 懒验证：确保 LLM 配置存在（在使用时才检查）

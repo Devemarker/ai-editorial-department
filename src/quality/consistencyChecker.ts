@@ -5,8 +5,15 @@ import { worldKnowledgeRepository } from '../memory/worldKnowledgeRepository.js'
 import { generateId } from '../lib/id.js';
 import type { QualityIssue } from '../types/index.js';
 
+/**
+ * 一致性检查器
+ * 检查人物状态一致性、世界观规则遵守情况和情节唯一性
+ */
 export class ConsistencyChecker {
-  // 检查人物状态一致性
+  /**
+   * 检查人物状态一致性
+   * 验证所有人物的状态是否有矛盾（如状态描述为空或过短）
+   */
   async checkCharacterConsistency(): Promise<QualityIssue[]> {
     const issues: QualityIssue[] = [];
     const characters = characterRepository.findAll();
@@ -28,7 +35,10 @@ export class ConsistencyChecker {
     return issues;
   }
 
-  // 检查世界观规则违反
+  /**
+   * 检查世界观规则遵守情况
+   * 验证章节内容是否充分展开世界观（内容过短可能未充分描写）
+   */
   async checkWorldRuleCompliance(): Promise<QualityIssue[]> {
     const issues: QualityIssue[] = [];
     const chapters = chapterRepository.findAll();
@@ -51,7 +61,10 @@ export class ConsistencyChecker {
     return issues;
   }
 
-  // 检查情节重复
+  /**
+   * 检查情节唯一性
+   * 验证相邻章节是否存在情节重复（通过标题相似度判断）
+   */
   async checkPlotUniqueness(): Promise<QualityIssue[]> {
     const issues: QualityIssue[] = [];
     const chapters = chapterRepository.findAll();
@@ -78,7 +91,10 @@ export class ConsistencyChecker {
     return issues;
   }
 
-  // 执行所有检查
+  /**
+   * 执行所有检查
+   * 并行运行三项检查并汇总结果
+   */
   async checkAll(): Promise<QualityIssue[]> {
     const [characterIssues, worldIssues, plotIssues] = await Promise.all([
       this.checkCharacterConsistency(),
@@ -89,7 +105,10 @@ export class ConsistencyChecker {
     return [...characterIssues, ...worldIssues, ...plotIssues];
   }
 
-  // 简单字符串相似度计算
+  /**
+   * 简单字符串相似度计算
+   * 基于字符集合的交集/并集比率
+   */
   private similarity(a: string, b: string): number {
     const s1 = a.toLowerCase();
     const s2 = b.toLowerCase();

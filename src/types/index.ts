@@ -143,6 +143,9 @@ export type PipelineStatus =
   | 'approved'
   | 'rejected';
 
+// 流水线活跃状态（正在进行中的状态）
+export const PIPELINE_ACTIVE_STATUSES: PipelineStatus[] = ['writing', 'editing', 'proofreading'];
+
 // 流水线任务
 export interface PipelineTask {
   id: string;
