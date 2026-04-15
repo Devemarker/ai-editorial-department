@@ -4,25 +4,24 @@ import { writerAgent } from '../agents/writer.js';
 import type { QualityIssue, QualityReport, ProjectInput } from '../types/index.js';
 
 export class AutoFixExecutor {
-  async executeFix(issue: QualityIssue, projectInput?: ProjectInput): Promise<boolean> {
+  async executeFix(issue: QualityIssue, projectInput?: ProjectInput): Promise<{ success: boolean; suggestedFix?: string }> {
     const strategy = fixStrategy.selectStrategy(issue);
 
     switch (strategy) {
       case 'ignore':
-        return true; // 忽略，继续
+        return { success: true }; // 忽略，继续
 
       case 'retry':
         // 重新生成当前章节
         if (issue.chapterId && projectInput) {
           await this.retryChapter(issue.chapterId, projectInput);
-          return true;
+          return { success: true };
         }
-        return false;
+        return { success: false, suggestedFix: fixStrategy.generateSuggestion(issue) };
 
       case 'rebuild':
         // 重建需要更多上下文，标记为需要人工处理
-        issue.suggestedFix = fixStrategy.generateSuggestion(issue);
-        return false;
+        return { success: false, suggestedFix: fixStrategy.generateSuggestion(issue) };
     }
   }
 
@@ -49,29 +48,32 @@ export class AutoFixExecutor {
     fixed: number;
     failed: number;
     ignored: number;
+    rebuildIssues: Array<{ issue: QualityIssue; suggestedFix: string }>;
   }> {
     const strategyMap = fixStrategy.processIssues(report.issues);
     let fixed = 0;
     let failed = 0;
-    let ignored = 0;
+    const ignored = (strategyMap.get('ignore') || []).length;
+    const rebuildIssues: Array<{ issue: QualityIssue; suggestedFix: string }> = [];
 
-    // 处理 ignore 策略
-    ignored = (strategyMap.get('ignore') || []).length;
-
-    // 处理 rebuild 策略（标记需要人工）
+    // 处理 rebuild 策略（收集需要人工处理的问题）
     for (const issue of strategyMap.get('rebuild') || []) {
-      issue.suggestedFix = fixStrategy.generateSuggestion(issue);
+      const suggestedFix = fixStrategy.generateSuggestion(issue);
+      rebuildIssues.push({ issue, suggestedFix });
       failed++;
     }
 
     // 处理 retry 策略
     for (const issue of strategyMap.get('retry') || []) {
-      const success = await this.executeFix(issue, projectInput);
-      if (success) fixed++;
-      else failed++;
+      const result = await this.executeFix(issue, projectInput);
+      if (result.success) {
+        fixed++;
+      } else {
+        failed++;
+      }
     }
 
-    return { fixed, failed, ignored };
+    return { fixed, failed, ignored, rebuildIssues };
   }
 }
 

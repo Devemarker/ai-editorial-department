@@ -50,8 +50,11 @@ export class Checkpoint {
     qualityReportRepository.create(report);
 
     // 自动修复
-    const { fixed, failed, ignored } = await autoFixExecutor.processReport(report);
+    const { fixed, failed, ignored, rebuildIssues } = await autoFixExecutor.processReport(report);
     console.log(`[Checkpoint] 自动修复完成: 修复 ${fixed} 个, 失败 ${failed} 个, 忽略 ${ignored} 个`);
+    if (rebuildIssues.length > 0) {
+      console.log(`[Checkpoint] 需要人工处理 ${rebuildIssues.length} 个问题`);
+    }
 
     this.config.onCheckpointComplete?.(report);
     return report;
