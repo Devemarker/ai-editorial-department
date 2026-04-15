@@ -9,8 +9,8 @@ describe('StateMachine', () => {
     cleanDb();
     initDb();
     disableForeignKeys();
-    // 重置状态
     resetDb();
+    taskQueue.reset(); // 重置任务队列
   });
 
   afterEach(() => {

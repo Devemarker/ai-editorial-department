@@ -22,6 +22,8 @@ describe('Pipeline', () => {
     initDb();
     disableForeignKeys();
     resetDb();
+    taskQueue.reset(); // 重置任务队列
+    globalEventBus.clear(); // 清除事件监听器累积
   });
 
   afterEach(() => {
@@ -29,19 +31,19 @@ describe('Pipeline', () => {
   });
 
   describe('createChapter', () => {
-    it('应创建章节任务', () => {
+    it('应创建章节任务', async () => {
       const pipeline = new Pipeline();
-      const task = pipeline.createChapter(1);
+      const task = await pipeline.createChapter(1);
 
       expect(task.chapterNumber).toBe(1);
       expect(task.status).toBe('pending');
       expect(task.id).toBeDefined();
     });
 
-    it('应创建多个章节任务', () => {
+    it('应创建多个章节任务', async () => {
       const pipeline = new Pipeline();
-      const task1 = pipeline.createChapter(1);
-      const task2 = pipeline.createChapter(2);
+      const task1 = await pipeline.createChapter(1);
+      const task2 = await pipeline.createChapter(2);
 
       expect(task1.chapterNumber).toBe(1);
       expect(task2.chapterNumber).toBe(2);
@@ -50,25 +52,25 @@ describe('Pipeline', () => {
   });
 
   describe('setProjectInput', () => {
-    it('应设置项目输入', () => {
+    it('应设置项目输入', async () => {
       const pipeline = new Pipeline();
       pipeline.setProjectInput(testProjectInput);
 
       // 通过 startWriting 验证 projectInput 已设置
-      const task = pipeline.createChapter(1);
+      const task = await pipeline.createChapter(1);
       // 由于没有 LLM，这里只验证不抛异常
       expect(task.id).toBeDefined();
     });
   });
 
   describe('getStatus', () => {
-    it('应返回正确的状态统计', () => {
+    it('应返回正确的状态统计', async () => {
       const pipeline = new Pipeline();
       pipeline.setProjectInput(testProjectInput);
 
-      pipeline.createChapter(1);
-      pipeline.createChapter(2);
-      pipeline.createChapter(3);
+      await pipeline.createChapter(1);
+      await pipeline.createChapter(2);
+      await pipeline.createChapter(3);
 
       const status = pipeline.getStatus();
 
@@ -78,12 +80,12 @@ describe('Pipeline', () => {
       expect(status.completed).toBe(0);
     });
 
-    it('应正确计算进行中的任务', () => {
+    it('应正确计算进行中的任务', async () => {
       const pipeline = new Pipeline();
       pipeline.setProjectInput(testProjectInput);
 
-      const task1 = pipeline.createChapter(1);
-      const task2 = pipeline.createChapter(2);
+      const task1 = await pipeline.createChapter(1);
+      const task2 = await pipeline.createChapter(2);
 
       // 模拟任务状态变化
       taskQueue.updateTaskStatus(task1.id, 'writing');

@@ -183,7 +183,8 @@ describe('ReportGenerator', () => {
       expect(report.issues).toHaveLength(1);
       expect(report.characterConsistency).toBeLessThan(100);
       expect(report.overallScore).toBeLessThan(100);
-      expect(report.passed).toBe(false);
+      // 单个 major 不会导致失败（总分仍 >= 80），只有 critical 或总分 < 80 才失败
+      expect(report.passed).toBe(true);
     });
 
     it('应在没有问题时生成通过报告', () => {

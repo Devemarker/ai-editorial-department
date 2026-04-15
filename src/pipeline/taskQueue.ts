@@ -76,6 +76,12 @@ export class TaskQueue {
   getAllTasks(): PipelineTask[] {
     return Array.from(this.tasks.values()).slice().sort((a, b) => a.chapterNumber - b.chapterNumber);
   }
+
+  // 重置队列状态（用于测试）
+  reset(): void {
+    this.tasks.clear();
+    this.processing.clear();
+  }
 }
 
 export const taskQueue = new TaskQueue();
