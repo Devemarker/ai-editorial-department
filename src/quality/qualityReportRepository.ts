@@ -3,47 +3,53 @@ import type { QualityReport, QualityIssue } from '../types/index.js';
 
 export class QualityReportRepository {
   create(report: QualityReport): QualityReport {
-    const stmt = getDb().prepare(`
-      INSERT INTO quality_reports
-      (id, checkpoint_number, total_chapters, character_consistency,
-       world_rule_compliance, plot_uniqueness, overall_score, passed, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+    const db = getDb();
 
-    stmt.run(
-      report.id,
-      report.checkpointNumber,
-      report.totalChapters,
-      report.characterConsistency,
-      report.worldRuleCompliance,
-      report.plotUniqueness,
-      report.overallScore,
-      report.passed ? 1 : 0,
-      report.createdAt
-    );
-
-    // 保存问题
-    for (const issue of report.issues) {
-      const issueStmt = getDb().prepare(`
-        INSERT INTO quality_issues
-        (id, report_id, type, severity, description, chapter_id,
-         related_content, suggested_fix, created_at)
+    // 使用事务确保报告和问题一起保存
+    const transaction = db.transaction(() => {
+      const stmt = db.prepare(`
+        INSERT INTO quality_reports
+        (id, checkpoint_number, total_chapters, character_consistency,
+         world_rule_compliance, plot_uniqueness, overall_score, passed, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
-      issueStmt.run(
-        issue.id,
+      stmt.run(
         report.id,
-        issue.type,
-        issue.severity,
-        issue.description,
-        issue.chapterId || null,
-        issue.relatedContent || null,
-        issue.suggestedFix || null,
-        issue.createdAt
+        report.checkpointNumber,
+        report.totalChapters,
+        report.characterConsistency,
+        report.worldRuleCompliance,
+        report.plotUniqueness,
+        report.overallScore,
+        report.passed ? 1 : 0,
+        report.createdAt
       );
-    }
 
+      // 保存问题
+      for (const issue of report.issues) {
+        const issueStmt = db.prepare(`
+          INSERT INTO quality_issues
+          (id, report_id, type, severity, description, chapter_id,
+           related_content, suggested_fix, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        issueStmt.run(
+          issue.id,
+          report.id,
+          issue.type,
+          issue.severity,
+          issue.description,
+          issue.chapterId || null,
+          issue.relatedContent || null,
+          issue.suggestedFix || null,
+          issue.createdAt
+        );
+      }
+    });
+
+    transaction();
     return report;
   }
 

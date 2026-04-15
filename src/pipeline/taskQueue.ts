@@ -42,21 +42,24 @@ export class TaskQueue {
     const task = this.tasks.get(taskId);
     if (!task) return undefined;
 
-    task.status = status;
-    task.updatedAt = Date.now();
-    if (extra) {
-      Object.assign(task, extra);
-    }
+    // 创建新对象而非修改原对象（不可变性）
+    const updatedTask: PipelineTask = {
+      ...task,
+      status,
+      updatedAt: Date.now(),
+      ...extra,
+    };
+    this.tasks.set(taskId, updatedTask);
 
     // 持久化章节ID
     if (extra?.chapterId) {
       const chapter = chapterRepository.findById(extra.chapterId);
       if (chapter) {
-        chapterRepository.update(extra.chapterId, { status: status as string });
+        chapterRepository.update(extra.chapterId, { status });
       }
     }
 
-    return task;
+    return updatedTask;
   }
 
   startProcessing(taskId: string): boolean {
@@ -74,7 +77,7 @@ export class TaskQueue {
   }
 
   getAllTasks(): PipelineTask[] {
-    return Array.from(this.tasks.values()).sort((a, b) => a.chapterNumber - b.chapterNumber);
+    return Array.from(this.tasks.values()).slice().sort((a, b) => a.chapterNumber - b.chapterNumber);
   }
 }
 

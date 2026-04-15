@@ -77,7 +77,8 @@ export class WorldKnowledgeRepository {
     try {
       await col.delete({ ids: [id] });
       return true;
-    } catch {
+    } catch (err) {
+      console.error(`[WorldKnowledge] 删除知识失败: ${id}`, err);
       return false;
     }
   }

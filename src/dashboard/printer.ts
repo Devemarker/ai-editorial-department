@@ -118,7 +118,7 @@ export class DashboardPrinter {
     console.log('\n【手动干预】');
     console.log('   使用以下命令进行干预：');
     console.log('   npm run cli -- dashboard:rewrite <章节号>  # 重写章节');
-    console.log('   npm run cli -- dashboard:rerview <章节号> # 重新审核');
+    console.log('   npm run cli -- dashboard:review <章节号> # 重新审核');
   }
 }
 
