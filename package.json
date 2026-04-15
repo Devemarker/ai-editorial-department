@@ -1,0 +1,30 @@
+{
+  "name": "ai-editorial-department",
+  "version": "0.1.0",
+  "description": "AI 编辑部智能体编排系统 - 多智能体协作平台用于 AI 辅助长篇小说创作",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "cli": "tsx src/cli.ts",
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["ai", "agents", "novel", "writing", "creative"],
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^11.6.0",
+    "chromadb": "^1.8.1",
+    "dotenv": "^16.4.5",
+    "openai": "^4.77.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
