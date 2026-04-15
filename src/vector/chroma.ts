@@ -8,18 +8,20 @@ let chromaAvailable = true;
 
 export function getChromaClient(): ChromaClient {
   if (!client) {
-    // 确保目录存在
     const chromaPath = config.chromaPath;
-    const dir = dirname(chromaPath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
+
+    // 只有本地路径才创建目录，URL 模式不需要
+    if (!chromaPath.startsWith('http://') && !chromaPath.startsWith('https://')) {
+      const dir = dirname(chromaPath);
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
     }
 
     // ChromaDB JS 1.8.x 使用服务器模式
     // path 可以是 HTTP URL 或本地路径
-    // 本地路径需要 ChromaDB 服务器运行
     client = new ChromaClient({
-      path: config.chromaPath,
+      path: chromaPath,
     });
   }
   return client;
