@@ -1,8 +1,8 @@
 import { globalEventBus } from './eventBus.js';
 import { taskQueue } from './taskQueue.js';
-import { stateMachine } from './stateMachine.js';
 import { writerAgent } from '../agents/writer.js';
-import { chiefEditorAgent } from '../agents/chiefEditor.js';
+import { contentEditorAgent } from '../agents/contentEditor.js';
+import { proofreaderAgent } from '../agents/proofreader.js';
 import type { PipelineTask, PipelineEvent, ProjectInput, PipelineConfig } from '../types/index.js';
 
 export class Pipeline {
@@ -12,9 +12,9 @@ export class Pipeline {
   constructor(config?: Partial<PipelineConfig>) {
     this.config = {
       autoWriting: config?.autoWriting ?? true,
-      autoEditing: config?.autoEditing ?? false, // MVP 暂时不实现
-      autoProofreading: config?.autoProofreading ?? false,
-      requireApproval: config?.requireApproval ?? true,
+      autoEditing: config?.autoEditing ?? true, // 启用自动编辑
+      autoProofreading: config?.autoProofreading ?? true, // 启用自动校对
+      requireApproval: config?.requireApproval ?? false, // 默认自动批准
     };
     this.setupEventListeners();
   }
@@ -31,22 +31,25 @@ export class Pipeline {
       }
     });
 
-    // 写作完成
+    // 写作完成 → 自动编辑
     globalEventBus.on<PipelineEvent>('task:written', async (e) => {
-      const task = taskQueue.getTask(e.taskId);
-      if (task?.chapterId && this.config.autoProofreading) {
-        // 自动校对
-        globalEventBus.emit('task:proofreading', { type: 'task:proofreading', taskId: e.taskId });
+      if (this.config.autoEditing) {
+        this.startEditing(e.taskId);
       }
     });
 
-    // 校对完成
+    // 编辑完成 → 自动校对
+    globalEventBus.on<PipelineEvent>('task:edited', async (e) => {
+      if (this.config.autoProofreading) {
+        this.startProofreading(e.taskId);
+      }
+    });
+
+    // 校对完成 → 批准
     globalEventBus.on<PipelineEvent>('task:proofread', async (e) => {
       if (this.config.requireApproval) {
-        // 需要人工审核
         globalEventBus.emit('task:rejected', { type: 'task:rejected', taskId: e.taskId, reason: '需要人工审核' });
       } else {
-        // 自动批准
         globalEventBus.emit('task:approved', { type: 'task:approved', taskId: e.taskId });
       }
     });
@@ -68,7 +71,6 @@ export class Pipeline {
         throw new Error('Project input not set');
       }
 
-      // 调用 Writer 生成章节
       const draft = await writerAgent.act({
         projectInput: this.projectInput,
         chapterPlan: {
@@ -79,7 +81,6 @@ export class Pipeline {
         },
       });
 
-      // 更新任务状态
       taskQueue.updateTaskStatus(taskId, 'writing', { chapterId: draft.chapterId });
       globalEventBus.emit<PipelineEvent>('task:written', {
         type: 'task:written',
@@ -94,16 +95,60 @@ export class Pipeline {
     }
   }
 
+  async startEditing(taskId: string): Promise<void> {
+    const task = taskQueue.getTask(taskId);
+    if (!task) return;
+
+    globalEventBus.emit<PipelineEvent>('task:editing', { type: 'task:editing', taskId });
+
+    try {
+      await contentEditorAgent.act({
+        chapterPlan: {
+          number: task.chapterNumber,
+          title: `第${task.chapterNumber}章`,
+          keyPoints: [],
+          characterStates: {},
+        },
+      });
+
+      globalEventBus.emit<PipelineEvent>('task:edited', { type: 'task:edited', taskId });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      globalEventBus.emit<PipelineEvent>('task:error', { type: 'task:error', taskId, error });
+    }
+  }
+
+  async startProofreading(taskId: string): Promise<void> {
+    const task = taskQueue.getTask(taskId);
+    if (!task) return;
+
+    globalEventBus.emit<PipelineEvent>('task:proofreading', { type: 'task:proofreading', taskId });
+
+    try {
+      await proofreaderAgent.act({
+        chapterPlan: {
+          number: task.chapterNumber,
+          title: `第${task.chapterNumber}章`,
+          keyPoints: [],
+          characterStates: {},
+        },
+      });
+
+      globalEventBus.emit<PipelineEvent>('task:proofread', { type: 'task:proofread', taskId });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      globalEventBus.emit<PipelineEvent>('task:error', { type: 'task:error', taskId, error });
+    }
+  }
+
   async run(chapterNumbers: number[]): Promise<PipelineTask[]> {
     const tasks: PipelineTask[] = [];
 
-    // 按顺序创建任务
     for (const num of chapterNumbers) {
       const task = await this.createChapter(num);
       tasks.push(task);
     }
 
-    // 并行处理所有任务
     await Promise.all(tasks.map((t) => this.startWriting(t.id)));
 
     return tasks;
