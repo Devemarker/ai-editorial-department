@@ -2,6 +2,7 @@ import { globalEventBus } from '../pipeline/eventBus.js';
 import { consistencyChecker } from './consistencyChecker.js';
 import { reportGenerator } from './reportGenerator.js';
 import { qualityReportRepository } from './qualityReportRepository.js';
+import { autoFixExecutor } from './autoFixExecutor.js';
 import type { PipelineEvent, QualityReport } from '../types/index.js';
 
 const CHECKPOINT_INTERVAL = 5; // 每 5 章检测一次
@@ -47,6 +48,10 @@ export class Checkpoint {
 
     // 保存到数据库
     qualityReportRepository.create(report);
+
+    // 自动修复
+    const { fixed, failed, ignored } = await autoFixExecutor.processReport(report);
+    console.log(`[Checkpoint] 自动修复完成: 修复 ${fixed} 个, 失败 ${failed} 个, 忽略 ${ignored} 个`);
 
     this.config.onCheckpointComplete?.(report);
     return report;
