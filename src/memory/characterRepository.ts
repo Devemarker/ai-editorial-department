@@ -1,15 +1,12 @@
 import { getDb } from '../db/sqlite.js';
+import { generateId } from '../lib/id.js';
 import type { CharacterState, CreateCharacterInput, UpdateCharacterInput } from '../types/index.js';
-
-function generateId(): string {
-  return `char_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
 
 export class CharacterRepository {
   create(input: CreateCharacterInput): CharacterState {
     const db = getDb();
     const now = Date.now();
-    const id = generateId();
+    const id = generateId('char');
     const relationships = JSON.stringify(input.relationships || {});
 
     const stmt = db.prepare(`
@@ -18,7 +15,9 @@ export class CharacterRepository {
     `);
     stmt.run(id, input.name, input.description || '', input.currentState || '', relationships, now, now);
 
-    return this.findById(id)!;
+    const created = this.findById(id);
+    if (!created) throw new Error(`创建角色失败: ${id}`);
+    return created;
   }
 
   findById(id: string): CharacterState | undefined {
@@ -83,12 +82,18 @@ export class CharacterRepository {
   }
 
   private mapRow(row: CharacterRow): CharacterState {
+    let relationships: Record<string, string> = {};
+    try {
+      relationships = JSON.parse(row.relationships);
+    } catch {
+      console.warn(`[CharacterRepository] 解析 relationships 失败，使用空对象: ${row.id}`);
+    }
     return {
       id: row.id,
       name: row.name,
       description: row.description,
       currentState: row.current_state,
-      relationships: JSON.parse(row.relationships),
+      relationships,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

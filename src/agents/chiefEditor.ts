@@ -1,6 +1,7 @@
 import { BaseAgent, type AgentContext } from './base.js';
 import { writerAgent } from './writer.js';
 import { memoryManagerAgent } from './memoryManager.js';
+import { parseJsonResponse } from '../llm/parseResponse.js';
 import type { ChapterPlan, ChapterDraft, ProjectInput } from '../types/index.js';
 
 export class ChiefEditorAgent extends BaseAgent {
@@ -95,28 +96,17 @@ ${memories.characters ? `【人物状态】\n${memories.characters}\n` : ''}
   }
 
   private parsePlan(chapterNumber: number, response: string): ChapterPlan {
-    try {
-      // 尝试解析 JSON
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        return {
-          number: chapterNumber,
-          title: parsed.title || `第${chapterNumber}章`,
-          keyPoints: parsed.keyPoints || [],
-          characterStates: parsed.characterStates || {},
-        };
-      }
-    } catch {
-      // 解析失败，使用默认值
-    }
-
-    return {
+    const fallback: ChapterPlan = {
       number: chapterNumber,
       title: `第${chapterNumber}章`,
       keyPoints: ['待补充'],
       characterStates: {},
     };
+    const parsed = parseJsonResponse<Omit<ChapterPlan, 'number'>>(response, fallback);
+    if (parsed.keyPoints.length === 0 && parsed.title === fallback.title) {
+      console.warn('[ChiefEditor] 章节规划 JSON 解析返回默认值');
+    }
+    return { number: chapterNumber, ...parsed };
   }
 }
 

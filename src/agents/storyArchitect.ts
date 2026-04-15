@@ -1,5 +1,6 @@
 import { BaseAgent } from './base.js';
 import { memoryManagerAgent } from './memoryManager.js';
+import { parseJsonResponse } from '../llm/parseResponse.js';
 import type { StoryArchitectResult } from '../types/index.js';
 
 export class StoryArchitectAgent extends BaseAgent {
@@ -60,23 +61,15 @@ ${memories.events ? `【已发生事件】\n${memories.events}\n` : ''}
   }
 
   private parseArchitectResponse(chapterNumber: number, response: string): StoryArchitectResult {
-    try {
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        return {
-          chapterNumber,
-          plotSuggestions: parsed.plotSuggestions || [],
-          rhythmAnalysis: parsed.rhythmAnalysis,
-        };
-      }
-    } catch {
-      // 解析失败，返回空结果
-    }
-    return {
+    const fallback: StoryArchitectResult = {
       chapterNumber,
       plotSuggestions: [],
     };
+    const parsed = parseJsonResponse<Omit<StoryArchitectResult, 'chapterNumber'>>(response, fallback);
+    if (parsed.plotSuggestions.length === 0) {
+      console.warn('[StoryArchitect] 情节建议 JSON 解析返回空结果');
+    }
+    return { chapterNumber, ...parsed };
   }
 }
 

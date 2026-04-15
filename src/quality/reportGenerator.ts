@@ -1,8 +1,5 @@
+import { generateId } from '../lib/id.js';
 import type { QualityIssue, QualityReport, IssueType } from '../types/index.js';
-
-function generateId(): string {
-  return `report_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
 
 export class ReportGenerator {
   generate(input: {
@@ -26,7 +23,7 @@ export class ReportGenerator {
     const passed = overallScore >= 80 && !issues.some((i) => i.severity === 'critical');
 
     return {
-      id: generateId(),
+      id: generateId('report'),
       checkpointNumber,
       totalChapters,
       issues,

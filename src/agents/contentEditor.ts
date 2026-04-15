@@ -1,5 +1,6 @@
 import { BaseAgent, type AgentContext } from './base.js';
 import { chapterRepository } from '../memory/chapterRepository.js';
+import { parseJsonResponse } from '../llm/parseResponse.js';
 import type { ContentEditResult, ContentChange } from '../types/index.js';
 
 export class ContentEditorAgent extends BaseAgent {
@@ -66,19 +67,12 @@ ${content}
   }
 
   private parseEditResponse(response: string, original: string): { editedContent: string; changes: ContentChange[] } {
-    try {
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        return {
-          editedContent: parsed.editedContent || original,
-          changes: parsed.changes || [],
-        };
-      }
-    } catch {
-      // 解析失败，返回原文
+    const fallback = { editedContent: original, changes: [] as ContentChange[] };
+    const parsed = parseJsonResponse<typeof fallback>(response, fallback);
+    if (parsed.editedContent === original && parsed.changes.length === 0) {
+      console.warn('[ContentEditor] JSON 解析返回空结果');
     }
-    return { editedContent: original, changes: [] };
+    return parsed;
   }
 }
 

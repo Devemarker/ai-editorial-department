@@ -2,11 +2,8 @@ import { characterRepository } from '../memory/characterRepository.js';
 import { eventRepository } from '../memory/eventRepository.js';
 import { chapterRepository } from '../memory/chapterRepository.js';
 import { worldKnowledgeRepository } from '../memory/worldKnowledgeRepository.js';
+import { generateId } from '../lib/id.js';
 import type { QualityIssue } from '../types/index.js';
-
-function generateId(): string {
-  return `issue_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
 
 export class ConsistencyChecker {
   // 检查人物状态一致性
@@ -18,7 +15,7 @@ export class ConsistencyChecker {
       // 检查人物状态是否有矛盾（简化实现）
       if (!char.currentState || char.currentState.length < 2) {
         issues.push({
-          id: generateId(),
+          id: generateId('issue'),
           type: 'character_conflict',
           severity: 'major',
           description: `人物 "${char.name}" 状态异常：${char.currentState}`,
@@ -40,7 +37,7 @@ export class ConsistencyChecker {
     for (const chapter of chapters) {
       if (chapter.content.length < 500) {
         issues.push({
-          id: generateId(),
+          id: generateId('issue'),
           type: 'world_rule_violation',
           severity: 'minor',
           description: `第 ${chapter.number} 章内容过短，可能未充分展开世界观`,
@@ -67,7 +64,7 @@ export class ConsistencyChecker {
       // 简单相似度检查：标题相似度
       if (this.similarity(prev.title, curr.title) > 0.7) {
         issues.push({
-          id: generateId(),
+          id: generateId('issue'),
           type: 'plot_repetition',
           severity: 'major',
           description: `第 ${prev.number} 章和第 ${curr.number} 章标题相似度较高，可能存在情节重复`,

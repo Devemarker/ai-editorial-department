@@ -1,17 +1,14 @@
 import { globalEventBus } from './eventBus.js';
 import { chapterRepository } from '../memory/chapterRepository.js';
+import { generateId } from '../lib/id.js';
 import type { PipelineTask, PipelineEvent } from '../types/index.js';
-
-function generateId(): string {
-  return `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
 
 export class TaskQueue {
   private tasks: Map<string, PipelineTask> = new Map();
   private processing: Set<string> = new Set();
 
   createTask(chapterNumber: number): PipelineTask {
-    const id = generateId();
+    const id = generateId('task');
     const task: PipelineTask = {
       id,
       chapterNumber,

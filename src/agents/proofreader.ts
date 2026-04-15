@@ -1,5 +1,6 @@
 import { BaseAgent, type AgentContext } from './base.js';
 import { chapterRepository } from '../memory/chapterRepository.js';
+import { parseJsonResponse } from '../llm/parseResponse.js';
 import type { ProofreadResult, ProofreadCorrection } from '../types/index.js';
 
 export class ProofreaderAgent extends BaseAgent {
@@ -66,19 +67,12 @@ ${content}
   }
 
   private parseProofreadResponse(response: string, original: string): { polishedContent: string; corrections: ProofreadCorrection[] } {
-    try {
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        return {
-          polishedContent: parsed.polishedContent || original,
-          corrections: parsed.corrections || [],
-        };
-      }
-    } catch {
-      // 解析失败，返回原文
+    const fallback = { polishedContent: original, corrections: [] as ProofreadCorrection[] };
+    const parsed = parseJsonResponse<typeof fallback>(response, fallback);
+    if (parsed.polishedContent === original && parsed.corrections.length === 0) {
+      console.warn('[Proofreader] JSON 解析返回空结果');
     }
-    return { polishedContent: original, corrections: [] };
+    return parsed;
   }
 }
 

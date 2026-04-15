@@ -1,9 +1,6 @@
 import { getDb } from '../db/sqlite.js';
+import { generateId } from '../lib/id.js';
 import type { Chapter } from '../types/index.js';
-
-function generateId(): string {
-  return `ch_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
 
 export class ChapterRepository {
   create(input: {
@@ -14,7 +11,7 @@ export class ChapterRepository {
   }): Chapter {
     const db = getDb();
     const now = Date.now();
-    const id = generateId();
+    const id = generateId('ch');
 
     const stmt = db.prepare(`
       INSERT INTO chapters (id, number, title, content, status, created_at, updated_at)
@@ -22,7 +19,9 @@ export class ChapterRepository {
     `);
     stmt.run(id, input.number, input.title, input.content, input.status || 'draft', now, now);
 
-    return this.findById(id)!;
+    const created = this.findById(id);
+    if (!created) throw new Error(`创建章节失败: ${id}`);
+    return created;
   }
 
   findById(id: string): Chapter | undefined {
